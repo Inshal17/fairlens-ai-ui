@@ -516,6 +516,222 @@ const Dashboard = () => {
         </motion.div>
       </div>
 
+      {/* Radar comparison + Audit feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.32 }}
+          className="lg:col-span-2 glass-card p-6"
+        >
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <div className="font-display font-semibold text-lg flex items-center gap-2">
+                Fairness profile
+                <Badge variant="outline" className="border-accent/40 text-accent bg-accent/10 text-[10px] font-medium">
+                  6 metrics
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Multi-dimensional fairness across statistical definitions
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-warning" />
+                <span className="text-muted-foreground">Current</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-success" />
+                <span className="text-muted-foreground">After mitigation</span>
+              </span>
+            </div>
+          </div>
+          <div className="h-72 mt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={fairnessMetricsRadar} outerRadius="78%">
+                <PolarGrid stroke="hsl(var(--border))" opacity={0.4} />
+                <PolarAngleAxis
+                  dataKey="metric"
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                />
+                <Radar
+                  name="Current"
+                  dataKey="before"
+                  stroke="hsl(38 95% 60%)"
+                  fill="hsl(38 95% 60%)"
+                  fillOpacity={0.2}
+                  strokeWidth={2}
+                  animationDuration={1100}
+                />
+                <Radar
+                  name="After"
+                  dataKey="after"
+                  stroke="hsl(152 76% 50%)"
+                  fill="hsl(152 76% 50%)"
+                  fillOpacity={0.25}
+                  strokeWidth={2}
+                  animationDuration={1300}
+                />
+                <ChartTooltip
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "0.75rem",
+                    fontSize: "12px",
+                  }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.36 }}
+          className="glass-card p-6 flex flex-col"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <div className="font-display font-semibold text-lg">Activity feed</div>
+            <Badge variant="outline" className="border-success/40 text-success bg-success/10 text-[10px]">
+              Live
+            </Badge>
+          </div>
+          <div className="text-xs text-muted-foreground mb-4">Audit trail · last 24h</div>
+          <div className="space-y-3 flex-1 overflow-hidden relative">
+            {auditFeed.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + i * 0.07 }}
+                className="flex gap-3 group"
+              >
+                <div className="flex flex-col items-center pt-1">
+                  <div
+                    className={`h-2 w-2 rounded-full border ${toneStyles[item.tone]}`}
+                  />
+                  {i < auditFeed.length - 1 && (
+                    <div className="flex-1 w-px bg-border/40 my-1" />
+                  )}
+                </div>
+                <div className="flex-1 pb-2">
+                  <div className="text-xs text-muted-foreground">{item.time}</div>
+                  <div className="text-sm leading-snug">
+                    <span className="font-medium text-foreground">{item.actor}</span>{" "}
+                    <span className="text-muted-foreground">{item.action}</span>{" "}
+                    <span className="font-mono text-xs text-foreground/90 bg-muted/40 px-1.5 py-0.5 rounded">
+                      {item.target}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          <button className="text-xs text-primary hover:text-primary-glow transition-colors mt-2 flex items-center gap-1 font-medium">
+            View full audit log <ArrowUpRight className="h-3 w-3" />
+          </button>
+        </motion.div>
+      </div>
+
+      {/* Model leaderboard */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="glass-card p-6 mb-6"
+      >
+        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+          <div>
+            <div className="font-display font-semibold text-lg flex items-center gap-2">
+              <GitBranch className="h-4 w-4 text-primary" />
+              Model registry
+            </div>
+            <div className="text-xs text-muted-foreground">
+              All deployed and staged models with live fairness telemetry
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="glass border-border/60">
+            <Zap className="h-3.5 w-3.5 mr-1.5" />
+            Compare
+          </Button>
+        </div>
+        <div className="overflow-x-auto -mx-2 px-2">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border/40 hover:bg-transparent">
+                <TableHead className="text-xs uppercase tracking-wider">Model</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Env</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Fairness</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Accuracy</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Drift</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Risk</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-right">Trend</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {modelLeaderboard.map((m, i) => (
+                <motion.tr
+                  key={m.name}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.45 + i * 0.05 }}
+                  className="border-border/30 hover:bg-primary/5 transition-colors cursor-pointer"
+                >
+                  <TableCell className="font-mono text-sm">{m.name}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={
+                        m.env === "Production"
+                          ? "border-primary/40 text-primary bg-primary/10"
+                          : "border-border/60 text-muted-foreground"
+                      }
+                    >
+                      {m.env}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 bg-muted/40 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${m.fairness}%` }}
+                          transition={{ duration: 0.9, delay: 0.5 + i * 0.05 }}
+                          className={`h-full rounded-full ${
+                            m.fairness >= 85
+                              ? "bg-success"
+                              : m.fairness >= 75
+                                ? "bg-primary"
+                                : "bg-warning"
+                          }`}
+                        />
+                      </div>
+                      <span className="font-mono text-sm tabular-nums">{m.fairness}%</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm tabular-nums">{m.accuracy}%</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{m.drift}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={riskStyles[m.risk]}>
+                      {m.risk}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {m.fairness >= 80 ? (
+                      <ArrowUpRight className="h-4 w-4 text-success inline" />
+                    ) : (
+                      <ArrowDownRight className="h-4 w-4 text-warning inline" />
+                    )}
+                  </TableCell>
+                </motion.tr>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </motion.div>
+
       {/* Auto-fix */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
