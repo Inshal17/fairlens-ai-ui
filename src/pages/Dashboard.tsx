@@ -414,15 +414,33 @@ const Dashboard = () => {
           transition={{ delay: 0.25 }}
           className="lg:col-span-2 glass-card p-6"
         >
-          <div className="font-display font-semibold text-lg">Fairness trend</div>
-          <div className="text-xs text-muted-foreground mb-2">7-day rolling fairness score</div>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="font-display font-semibold text-lg">Fairness vs Accuracy trend</div>
+              <div className="text-xs text-muted-foreground mb-2">7-day rolling · live model telemetry</div>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-primary" />
+                <span className="text-muted-foreground">Fairness</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-accent" />
+                <span className="text-muted-foreground">Accuracy</span>
+              </span>
+            </div>
+          </div>
           <div className="h-56 mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={fairnessTrend}>
+              <AreaChart data={fairnessTrend}>
                 <defs>
-                  <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="hsl(265 89% 66%)" />
-                    <stop offset="100%" stopColor="hsl(195 95% 60%)" />
+                  <linearGradient id="fairFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(265 89% 66%)" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="hsl(265 89% 66%)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="accFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(195 95% 60%)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(195 95% 60%)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -436,15 +454,23 @@ const Dashboard = () => {
                     fontSize: "12px",
                   }}
                 />
-                <Line
+                <Area
+                  type="monotone"
+                  dataKey="accuracy"
+                  stroke="hsl(195 95% 60%)"
+                  strokeWidth={2}
+                  fill="url(#accFill)"
+                  animationDuration={1200}
+                />
+                <Area
                   type="monotone"
                   dataKey="fairness"
-                  stroke="url(#lineGrad)"
+                  stroke="hsl(265 89% 66%)"
                   strokeWidth={3}
-                  dot={{ fill: "hsl(265 89% 66%)", r: 4 }}
-                  activeDot={{ r: 6 }}
+                  fill="url(#fairFill)"
+                  animationDuration={1200}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </motion.div>
