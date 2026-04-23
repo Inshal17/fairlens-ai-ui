@@ -143,9 +143,18 @@ const riskStyles: Record<string, string> = {
 const Dashboard = () => {
   const [fixed, setFixed] = useState(false);
   const [fixing, setFixing] = useState(false);
+  const [timeframe, setTimeframe] = useState("7d");
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const [livePulse, setLivePulse] = useState(0);
 
   const fairnessAfter = fixed ? 92 : 78;
   const biasAfter = fixed ? 0.11 : 0.32;
+  const totalSamples = groupBias.reduce((sum, g) => sum + g.samples, 0);
+
+  useEffect(() => {
+    const id = setInterval(() => setLivePulse((p) => (p + 1) % 100), 2200);
+    return () => clearInterval(id);
+  }, []);
 
   const handleFix = () => {
     setFixing(true);
