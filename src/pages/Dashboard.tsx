@@ -1,9 +1,25 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { AppLayout } from "@/components/fairlens/AppLayout";
 import { PageHeader } from "@/components/fairlens/PageHeader";
 import { MetricCard } from "@/components/fairlens/MetricCard";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
@@ -19,8 +35,19 @@ import {
   Info,
   Download,
   CheckCircle2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Users,
+  ShieldCheck,
+  Zap,
+  Filter,
+  Clock,
+  GitBranch,
+  TrendingUp,
 } from "lucide-react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -29,30 +56,35 @@ import {
   LineChart,
   Pie,
   PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
   ResponsiveContainer,
   Tooltip as ChartTooltip,
   XAxis,
   YAxis,
+  Legend,
 } from "recharts";
 import { toast } from "sonner";
 
 const groupBias = [
-  { group: "Male", bias: 0.18, fairness: 0.82 },
-  { group: "Female", bias: 0.41, fairness: 0.59 },
-  { group: "Non-binary", bias: 0.33, fairness: 0.67 },
-  { group: "<25", bias: 0.22, fairness: 0.78 },
-  { group: "25-45", bias: 0.16, fairness: 0.84 },
-  { group: "45+", bias: 0.38, fairness: 0.62 },
+  { group: "Male", bias: 0.18, fairness: 0.82, samples: 12450 },
+  { group: "Female", bias: 0.41, fairness: 0.59, samples: 11820 },
+  { group: "Non-binary", bias: 0.33, fairness: 0.67, samples: 1320 },
+  { group: "<25", bias: 0.22, fairness: 0.78, samples: 6200 },
+  { group: "25-45", bias: 0.16, fairness: 0.84, samples: 14800 },
+  { group: "45+", bias: 0.38, fairness: 0.62, samples: 4590 },
 ];
 
 const fairnessTrend = [
-  { day: "Mon", fairness: 62 },
-  { day: "Tue", fairness: 65 },
-  { day: "Wed", fairness: 61 },
-  { day: "Thu", fairness: 70 },
-  { day: "Fri", fairness: 73 },
-  { day: "Sat", fairness: 76 },
-  { day: "Sun", fairness: 78 },
+  { day: "Mon", fairness: 62, accuracy: 91, drift: 0.04 },
+  { day: "Tue", fairness: 65, accuracy: 90, drift: 0.05 },
+  { day: "Wed", fairness: 61, accuracy: 92, drift: 0.07 },
+  { day: "Thu", fairness: 70, accuracy: 89, drift: 0.06 },
+  { day: "Fri", fairness: 73, accuracy: 90, drift: 0.05 },
+  { day: "Sat", fairness: 76, accuracy: 91, drift: 0.04 },
+  { day: "Sun", fairness: 78, accuracy: 90, drift: 0.03 },
 ];
 
 const featureContrib = [
@@ -70,12 +102,59 @@ const biasedFeatures = [
   { name: "Zip code", pct: 14, desc: "Geographic proxy for race." },
 ];
 
+const fairnessMetricsRadar = [
+  { metric: "Demographic\nParity", before: 62, after: 91 },
+  { metric: "Equal\nOpportunity", before: 71, after: 93 },
+  { metric: "Predictive\nParity", before: 68, after: 89 },
+  { metric: "Calibration", before: 80, after: 94 },
+  { metric: "Treatment\nEquality", before: 65, after: 90 },
+  { metric: "Counterfactual", before: 70, after: 92 },
+];
+
+const auditFeed = [
+  { time: "2 min ago", actor: "Claire (ML Lead)", action: "approved mitigation on", target: "loan_model_v3", tone: "success" as const },
+  { time: "14 min ago", actor: "AutoAudit", action: "flagged disparate impact in", target: "zip_code feature", tone: "warning" as const },
+  { time: "1 hr ago", actor: "Marco (Compliance)", action: "exported SOC-2 evidence for", target: "Q1 audit", tone: "neutral" as const },
+  { time: "3 hr ago", actor: "FairLens AI", action: "completed re-training of", target: "loan_model_v3.1", tone: "primary" as const },
+  { time: "Yesterday", actor: "Priya (Data Sci)", action: "uploaded", target: "applicants_2026_q1.csv", tone: "neutral" as const },
+];
+
+const modelLeaderboard = [
+  { name: "loan_model_v3", env: "Production", fairness: 78, accuracy: 90.4, drift: "Low", risk: "Medium" },
+  { name: "loan_model_v3.1", env: "Staging", fairness: 92, accuracy: 89.8, drift: "Low", risk: "Low" },
+  { name: "fraud_detector_v2", env: "Production", fairness: 84, accuracy: 96.1, drift: "Low", risk: "Low" },
+  { name: "credit_score_v7", env: "Production", fairness: 67, accuracy: 91.7, drift: "Medium", risk: "High" },
+  { name: "churn_predict_v4", env: "Staging", fairness: 88, accuracy: 87.2, drift: "Low", risk: "Low" },
+];
+
+const toneStyles: Record<string, string> = {
+  success: "bg-success/15 text-success border-success/30",
+  warning: "bg-warning/15 text-warning border-warning/30",
+  primary: "bg-primary/15 text-primary border-primary/30",
+  neutral: "bg-muted/40 text-muted-foreground border-border/60",
+};
+
+const riskStyles: Record<string, string> = {
+  Low: "bg-success/15 text-success border-success/30",
+  Medium: "bg-warning/15 text-warning border-warning/30",
+  High: "bg-destructive/15 text-destructive border-destructive/30",
+};
+
 const Dashboard = () => {
   const [fixed, setFixed] = useState(false);
   const [fixing, setFixing] = useState(false);
+  const [timeframe, setTimeframe] = useState("7d");
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const [livePulse, setLivePulse] = useState(0);
 
   const fairnessAfter = fixed ? 92 : 78;
   const biasAfter = fixed ? 0.11 : 0.32;
+  const totalSamples = groupBias.reduce((sum, g) => sum + g.samples, 0);
+
+  useEffect(() => {
+    const id = setInterval(() => setLivePulse((p) => (p + 1) % 100), 2200);
+    return () => clearInterval(id);
+  }, []);
 
   const handleFix = () => {
     setFixing(true);
@@ -95,6 +174,18 @@ const Dashboard = () => {
         description="Real-time fairness metrics across protected groups."
         actions={
           <>
+            <Select value={timeframe} onValueChange={setTimeframe}>
+              <SelectTrigger className="glass border-border/60 w-[130px] h-10">
+                <Clock className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">Last 24h</SelectItem>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last quarter</SelectItem>
+              </SelectContent>
+            </Select>
             <Button variant="outline" className="glass border-border/60">
               <Download className="h-4 w-4 mr-2" />
               Export
@@ -107,8 +198,36 @@ const Dashboard = () => {
         }
       />
 
+      {/* Live status strip */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card px-4 py-3 mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs"
+      >
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+          </span>
+          <span className="text-foreground font-medium">Audit engine live</span>
+          <span className="text-muted-foreground">· streaming {livePulse + 1240} predictions/min</span>
+        </div>
+        <div className="h-3 w-px bg-border/60 hidden sm:block" />
+        <div className="text-muted-foreground">
+          Model <span className="text-foreground font-mono">loan_model_v3</span> · v3.0.7
+        </div>
+        <div className="h-3 w-px bg-border/60 hidden sm:block" />
+        <div className="text-muted-foreground">
+          {totalSamples.toLocaleString()} samples analysed
+        </div>
+        <div className="ml-auto flex items-center gap-2 text-muted-foreground">
+          <ShieldCheck className="h-3.5 w-3.5 text-success" />
+          SOC-2 · GDPR · EU AI Act ready
+        </div>
+      </motion.div>
+
       {/* Top metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <MetricCard
           label="Bias Score"
           value={biasAfter.toFixed(2)}
@@ -135,6 +254,15 @@ const Dashboard = () => {
           accent={fixed ? "success" : "warning"}
           delay={0.1}
         />
+        <MetricCard
+          label="Protected Groups"
+          value="6"
+          delta="2 require attention"
+          trend="neutral"
+          icon={Users}
+          accent="primary"
+          delay={0.15}
+        />
       </div>
 
       {/* Charts row */}
@@ -145,18 +273,35 @@ const Dashboard = () => {
           transition={{ delay: 0.15 }}
           className="lg:col-span-2 glass-card p-6"
         >
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-start justify-between mb-1 gap-3">
             <div>
               <div className="font-display font-semibold text-lg">Bias across groups</div>
               <div className="text-xs text-muted-foreground">Lower is fairer · per protected attribute</div>
             </div>
+            <div className="flex items-center gap-2 text-xs">
+              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Click bars to inspect</span>
+            </div>
           </div>
           <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={groupBias}>
+              <BarChart
+                data={groupBias}
+                onClick={(e: any) => {
+                  const g = e?.activePayload?.[0]?.payload?.group;
+                  if (g) {
+                    setActiveGroup((prev) => (prev === g ? null : g));
+                    toast(`Filtered: ${g}`, { description: "Cohort drill-down active" });
+                  }
+                }}
+              >
                 <defs>
                   <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="hsl(280 95% 72%)" />
+                    <stop offset="100%" stopColor="hsl(265 89% 66%)" />
+                  </linearGradient>
+                  <linearGradient id="barGradActive" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(195 95% 60%)" />
                     <stop offset="100%" stopColor="hsl(265 89% 66%)" />
                   </linearGradient>
                 </defs>
@@ -164,16 +309,51 @@ const Dashboard = () => {
                 <XAxis dataKey="group" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <ChartTooltip
+                  cursor={{ fill: "hsl(var(--primary) / 0.08)" }}
                   contentStyle={{
                     background: "hsl(var(--popover))",
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "0.75rem",
                     fontSize: "12px",
                   }}
+                  formatter={(value: number, _name, item: any) => [
+                    `${value} bias · ${item.payload.samples.toLocaleString()} samples`,
+                    item.payload.group,
+                  ]}
                 />
-                <Bar dataKey="bias" fill="url(#barGrad)" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="bias" radius={[8, 8, 0, 0]} animationDuration={900}>
+                  {groupBias.map((entry) => (
+                    <Cell
+                      key={entry.group}
+                      cursor="pointer"
+                      fill={
+                        activeGroup === entry.group
+                          ? "url(#barGradActive)"
+                          : activeGroup
+                            ? "hsl(265 30% 30%)"
+                            : "url(#barGrad)"
+                      }
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {groupBias.map((g) => (
+              <button
+                key={g.group}
+                onClick={() => setActiveGroup((prev) => (prev === g.group ? null : g.group))}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                  activeGroup === g.group
+                    ? "bg-primary/20 border-primary/50 text-foreground"
+                    : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border"
+                }`}
+              >
+                {g.group}
+                <span className="ml-1.5 opacity-60 font-mono">{g.samples.toLocaleString()}</span>
+              </button>
+            ))}
           </div>
         </motion.div>
 
@@ -234,15 +414,33 @@ const Dashboard = () => {
           transition={{ delay: 0.25 }}
           className="lg:col-span-2 glass-card p-6"
         >
-          <div className="font-display font-semibold text-lg">Fairness trend</div>
-          <div className="text-xs text-muted-foreground mb-2">7-day rolling fairness score</div>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="font-display font-semibold text-lg">Fairness vs Accuracy trend</div>
+              <div className="text-xs text-muted-foreground mb-2">7-day rolling · live model telemetry</div>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-primary" />
+                <span className="text-muted-foreground">Fairness</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-accent" />
+                <span className="text-muted-foreground">Accuracy</span>
+              </span>
+            </div>
+          </div>
           <div className="h-56 mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={fairnessTrend}>
+              <AreaChart data={fairnessTrend}>
                 <defs>
-                  <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="hsl(265 89% 66%)" />
-                    <stop offset="100%" stopColor="hsl(195 95% 60%)" />
+                  <linearGradient id="fairFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(265 89% 66%)" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="hsl(265 89% 66%)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="accFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(195 95% 60%)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(195 95% 60%)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -256,15 +454,23 @@ const Dashboard = () => {
                     fontSize: "12px",
                   }}
                 />
-                <Line
+                <Area
+                  type="monotone"
+                  dataKey="accuracy"
+                  stroke="hsl(195 95% 60%)"
+                  strokeWidth={2}
+                  fill="url(#accFill)"
+                  animationDuration={1200}
+                />
+                <Area
                   type="monotone"
                   dataKey="fairness"
-                  stroke="url(#lineGrad)"
+                  stroke="hsl(265 89% 66%)"
                   strokeWidth={3}
-                  dot={{ fill: "hsl(265 89% 66%)", r: 4 }}
-                  activeDot={{ r: 6 }}
+                  fill="url(#fairFill)"
+                  animationDuration={1200}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </motion.div>
@@ -309,6 +515,222 @@ const Dashboard = () => {
           </TooltipProvider>
         </motion.div>
       </div>
+
+      {/* Radar comparison + Audit feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.32 }}
+          className="lg:col-span-2 glass-card p-6"
+        >
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <div className="font-display font-semibold text-lg flex items-center gap-2">
+                Fairness profile
+                <Badge variant="outline" className="border-accent/40 text-accent bg-accent/10 text-[10px] font-medium">
+                  6 metrics
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Multi-dimensional fairness across statistical definitions
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-warning" />
+                <span className="text-muted-foreground">Current</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-success" />
+                <span className="text-muted-foreground">After mitigation</span>
+              </span>
+            </div>
+          </div>
+          <div className="h-72 mt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={fairnessMetricsRadar} outerRadius="78%">
+                <PolarGrid stroke="hsl(var(--border))" opacity={0.4} />
+                <PolarAngleAxis
+                  dataKey="metric"
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                />
+                <Radar
+                  name="Current"
+                  dataKey="before"
+                  stroke="hsl(38 95% 60%)"
+                  fill="hsl(38 95% 60%)"
+                  fillOpacity={0.2}
+                  strokeWidth={2}
+                  animationDuration={1100}
+                />
+                <Radar
+                  name="After"
+                  dataKey="after"
+                  stroke="hsl(152 76% 50%)"
+                  fill="hsl(152 76% 50%)"
+                  fillOpacity={0.25}
+                  strokeWidth={2}
+                  animationDuration={1300}
+                />
+                <ChartTooltip
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "0.75rem",
+                    fontSize: "12px",
+                  }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.36 }}
+          className="glass-card p-6 flex flex-col"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <div className="font-display font-semibold text-lg">Activity feed</div>
+            <Badge variant="outline" className="border-success/40 text-success bg-success/10 text-[10px]">
+              Live
+            </Badge>
+          </div>
+          <div className="text-xs text-muted-foreground mb-4">Audit trail · last 24h</div>
+          <div className="space-y-3 flex-1 overflow-hidden relative">
+            {auditFeed.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + i * 0.07 }}
+                className="flex gap-3 group"
+              >
+                <div className="flex flex-col items-center pt-1">
+                  <div
+                    className={`h-2 w-2 rounded-full border ${toneStyles[item.tone]}`}
+                  />
+                  {i < auditFeed.length - 1 && (
+                    <div className="flex-1 w-px bg-border/40 my-1" />
+                  )}
+                </div>
+                <div className="flex-1 pb-2">
+                  <div className="text-xs text-muted-foreground">{item.time}</div>
+                  <div className="text-sm leading-snug">
+                    <span className="font-medium text-foreground">{item.actor}</span>{" "}
+                    <span className="text-muted-foreground">{item.action}</span>{" "}
+                    <span className="font-mono text-xs text-foreground/90 bg-muted/40 px-1.5 py-0.5 rounded">
+                      {item.target}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          <button className="text-xs text-primary hover:text-primary-glow transition-colors mt-2 flex items-center gap-1 font-medium">
+            View full audit log <ArrowUpRight className="h-3 w-3" />
+          </button>
+        </motion.div>
+      </div>
+
+      {/* Model leaderboard */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="glass-card p-6 mb-6"
+      >
+        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+          <div>
+            <div className="font-display font-semibold text-lg flex items-center gap-2">
+              <GitBranch className="h-4 w-4 text-primary" />
+              Model registry
+            </div>
+            <div className="text-xs text-muted-foreground">
+              All deployed and staged models with live fairness telemetry
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="glass border-border/60">
+            <Zap className="h-3.5 w-3.5 mr-1.5" />
+            Compare
+          </Button>
+        </div>
+        <div className="overflow-x-auto -mx-2 px-2">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border/40 hover:bg-transparent">
+                <TableHead className="text-xs uppercase tracking-wider">Model</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Env</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Fairness</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Accuracy</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Drift</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Risk</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-right">Trend</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {modelLeaderboard.map((m, i) => (
+                <motion.tr
+                  key={m.name}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.45 + i * 0.05 }}
+                  className="border-border/30 hover:bg-primary/5 transition-colors cursor-pointer"
+                >
+                  <TableCell className="font-mono text-sm">{m.name}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={
+                        m.env === "Production"
+                          ? "border-primary/40 text-primary bg-primary/10"
+                          : "border-border/60 text-muted-foreground"
+                      }
+                    >
+                      {m.env}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 bg-muted/40 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${m.fairness}%` }}
+                          transition={{ duration: 0.9, delay: 0.5 + i * 0.05 }}
+                          className={`h-full rounded-full ${
+                            m.fairness >= 85
+                              ? "bg-success"
+                              : m.fairness >= 75
+                                ? "bg-primary"
+                                : "bg-warning"
+                          }`}
+                        />
+                      </div>
+                      <span className="font-mono text-sm tabular-nums">{m.fairness}%</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm tabular-nums">{m.accuracy}%</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{m.drift}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={riskStyles[m.risk]}>
+                      {m.risk}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {m.fairness >= 80 ? (
+                      <ArrowUpRight className="h-4 w-4 text-success inline" />
+                    ) : (
+                      <ArrowDownRight className="h-4 w-4 text-warning inline" />
+                    )}
+                  </TableCell>
+                </motion.tr>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </motion.div>
 
       {/* Auto-fix */}
       <motion.div
