@@ -174,6 +174,18 @@ const Dashboard = () => {
         description="Real-time fairness metrics across protected groups."
         actions={
           <>
+            <Select value={timeframe} onValueChange={setTimeframe}>
+              <SelectTrigger className="glass border-border/60 w-[130px] h-10">
+                <Clock className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">Last 24h</SelectItem>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last quarter</SelectItem>
+              </SelectContent>
+            </Select>
             <Button variant="outline" className="glass border-border/60">
               <Download className="h-4 w-4 mr-2" />
               Export
@@ -186,8 +198,36 @@ const Dashboard = () => {
         }
       />
 
+      {/* Live status strip */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card px-4 py-3 mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs"
+      >
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+          </span>
+          <span className="text-foreground font-medium">Audit engine live</span>
+          <span className="text-muted-foreground">· streaming {livePulse + 1240} predictions/min</span>
+        </div>
+        <div className="h-3 w-px bg-border/60 hidden sm:block" />
+        <div className="text-muted-foreground">
+          Model <span className="text-foreground font-mono">loan_model_v3</span> · v3.0.7
+        </div>
+        <div className="h-3 w-px bg-border/60 hidden sm:block" />
+        <div className="text-muted-foreground">
+          {totalSamples.toLocaleString()} samples analysed
+        </div>
+        <div className="ml-auto flex items-center gap-2 text-muted-foreground">
+          <ShieldCheck className="h-3.5 w-3.5 text-success" />
+          SOC-2 · GDPR · EU AI Act ready
+        </div>
+      </motion.div>
+
       {/* Top metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <MetricCard
           label="Bias Score"
           value={biasAfter.toFixed(2)}
@@ -213,6 +253,15 @@ const Dashboard = () => {
           icon={Activity}
           accent={fixed ? "success" : "warning"}
           delay={0.1}
+        />
+        <MetricCard
+          label="Protected Groups"
+          value="6"
+          delta="2 require attention"
+          trend="neutral"
+          icon={Users}
+          accent="primary"
+          delay={0.15}
         />
       </div>
 
