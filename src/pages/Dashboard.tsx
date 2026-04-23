@@ -273,18 +273,35 @@ const Dashboard = () => {
           transition={{ delay: 0.15 }}
           className="lg:col-span-2 glass-card p-6"
         >
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-start justify-between mb-1 gap-3">
             <div>
               <div className="font-display font-semibold text-lg">Bias across groups</div>
               <div className="text-xs text-muted-foreground">Lower is fairer · per protected attribute</div>
             </div>
+            <div className="flex items-center gap-2 text-xs">
+              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Click bars to inspect</span>
+            </div>
           </div>
           <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={groupBias}>
+              <BarChart
+                data={groupBias}
+                onClick={(e: any) => {
+                  const g = e?.activePayload?.[0]?.payload?.group;
+                  if (g) {
+                    setActiveGroup((prev) => (prev === g ? null : g));
+                    toast(`Filtered: ${g}`, { description: "Cohort drill-down active" });
+                  }
+                }}
+              >
                 <defs>
                   <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="hsl(280 95% 72%)" />
+                    <stop offset="100%" stopColor="hsl(265 89% 66%)" />
+                  </linearGradient>
+                  <linearGradient id="barGradActive" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(195 95% 60%)" />
                     <stop offset="100%" stopColor="hsl(265 89% 66%)" />
                   </linearGradient>
                 </defs>
@@ -292,16 +309,51 @@ const Dashboard = () => {
                 <XAxis dataKey="group" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <ChartTooltip
+                  cursor={{ fill: "hsl(var(--primary) / 0.08)" }}
                   contentStyle={{
                     background: "hsl(var(--popover))",
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "0.75rem",
                     fontSize: "12px",
                   }}
+                  formatter={(value: number, _name, item: any) => [
+                    `${value} bias · ${item.payload.samples.toLocaleString()} samples`,
+                    item.payload.group,
+                  ]}
                 />
-                <Bar dataKey="bias" fill="url(#barGrad)" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="bias" radius={[8, 8, 0, 0]} animationDuration={900}>
+                  {groupBias.map((entry) => (
+                    <Cell
+                      key={entry.group}
+                      cursor="pointer"
+                      fill={
+                        activeGroup === entry.group
+                          ? "url(#barGradActive)"
+                          : activeGroup
+                            ? "hsl(265 30% 30%)"
+                            : "url(#barGrad)"
+                      }
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {groupBias.map((g) => (
+              <button
+                key={g.group}
+                onClick={() => setActiveGroup((prev) => (prev === g.group ? null : g.group))}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                  activeGroup === g.group
+                    ? "bg-primary/20 border-primary/50 text-foreground"
+                    : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border"
+                }`}
+              >
+                {g.group}
+                <span className="ml-1.5 opacity-60 font-mono">{g.samples.toLocaleString()}</span>
+              </button>
+            ))}
           </div>
         </motion.div>
 
