@@ -1,9 +1,25 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { AppLayout } from "@/components/fairlens/AppLayout";
 import { PageHeader } from "@/components/fairlens/PageHeader";
 import { MetricCard } from "@/components/fairlens/MetricCard";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
@@ -19,8 +35,19 @@ import {
   Info,
   Download,
   CheckCircle2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Users,
+  ShieldCheck,
+  Zap,
+  Filter,
+  Clock,
+  GitBranch,
+  TrendingUp,
 } from "lucide-react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -29,30 +56,35 @@ import {
   LineChart,
   Pie,
   PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
   ResponsiveContainer,
   Tooltip as ChartTooltip,
   XAxis,
   YAxis,
+  Legend,
 } from "recharts";
 import { toast } from "sonner";
 
 const groupBias = [
-  { group: "Male", bias: 0.18, fairness: 0.82 },
-  { group: "Female", bias: 0.41, fairness: 0.59 },
-  { group: "Non-binary", bias: 0.33, fairness: 0.67 },
-  { group: "<25", bias: 0.22, fairness: 0.78 },
-  { group: "25-45", bias: 0.16, fairness: 0.84 },
-  { group: "45+", bias: 0.38, fairness: 0.62 },
+  { group: "Male", bias: 0.18, fairness: 0.82, samples: 12450 },
+  { group: "Female", bias: 0.41, fairness: 0.59, samples: 11820 },
+  { group: "Non-binary", bias: 0.33, fairness: 0.67, samples: 1320 },
+  { group: "<25", bias: 0.22, fairness: 0.78, samples: 6200 },
+  { group: "25-45", bias: 0.16, fairness: 0.84, samples: 14800 },
+  { group: "45+", bias: 0.38, fairness: 0.62, samples: 4590 },
 ];
 
 const fairnessTrend = [
-  { day: "Mon", fairness: 62 },
-  { day: "Tue", fairness: 65 },
-  { day: "Wed", fairness: 61 },
-  { day: "Thu", fairness: 70 },
-  { day: "Fri", fairness: 73 },
-  { day: "Sat", fairness: 76 },
-  { day: "Sun", fairness: 78 },
+  { day: "Mon", fairness: 62, accuracy: 91, drift: 0.04 },
+  { day: "Tue", fairness: 65, accuracy: 90, drift: 0.05 },
+  { day: "Wed", fairness: 61, accuracy: 92, drift: 0.07 },
+  { day: "Thu", fairness: 70, accuracy: 89, drift: 0.06 },
+  { day: "Fri", fairness: 73, accuracy: 90, drift: 0.05 },
+  { day: "Sat", fairness: 76, accuracy: 91, drift: 0.04 },
+  { day: "Sun", fairness: 78, accuracy: 90, drift: 0.03 },
 ];
 
 const featureContrib = [
@@ -69,6 +101,44 @@ const biasedFeatures = [
   { name: "Age group", pct: 17, desc: "Older applicants underweighted." },
   { name: "Zip code", pct: 14, desc: "Geographic proxy for race." },
 ];
+
+const fairnessMetricsRadar = [
+  { metric: "Demographic\nParity", before: 62, after: 91 },
+  { metric: "Equal\nOpportunity", before: 71, after: 93 },
+  { metric: "Predictive\nParity", before: 68, after: 89 },
+  { metric: "Calibration", before: 80, after: 94 },
+  { metric: "Treatment\nEquality", before: 65, after: 90 },
+  { metric: "Counterfactual", before: 70, after: 92 },
+];
+
+const auditFeed = [
+  { time: "2 min ago", actor: "Claire (ML Lead)", action: "approved mitigation on", target: "loan_model_v3", tone: "success" as const },
+  { time: "14 min ago", actor: "AutoAudit", action: "flagged disparate impact in", target: "zip_code feature", tone: "warning" as const },
+  { time: "1 hr ago", actor: "Marco (Compliance)", action: "exported SOC-2 evidence for", target: "Q1 audit", tone: "neutral" as const },
+  { time: "3 hr ago", actor: "FairLens AI", action: "completed re-training of", target: "loan_model_v3.1", tone: "primary" as const },
+  { time: "Yesterday", actor: "Priya (Data Sci)", action: "uploaded", target: "applicants_2026_q1.csv", tone: "neutral" as const },
+];
+
+const modelLeaderboard = [
+  { name: "loan_model_v3", env: "Production", fairness: 78, accuracy: 90.4, drift: "Low", risk: "Medium" },
+  { name: "loan_model_v3.1", env: "Staging", fairness: 92, accuracy: 89.8, drift: "Low", risk: "Low" },
+  { name: "fraud_detector_v2", env: "Production", fairness: 84, accuracy: 96.1, drift: "Low", risk: "Low" },
+  { name: "credit_score_v7", env: "Production", fairness: 67, accuracy: 91.7, drift: "Medium", risk: "High" },
+  { name: "churn_predict_v4", env: "Staging", fairness: 88, accuracy: 87.2, drift: "Low", risk: "Low" },
+];
+
+const toneStyles: Record<string, string> = {
+  success: "bg-success/15 text-success border-success/30",
+  warning: "bg-warning/15 text-warning border-warning/30",
+  primary: "bg-primary/15 text-primary border-primary/30",
+  neutral: "bg-muted/40 text-muted-foreground border-border/60",
+};
+
+const riskStyles: Record<string, string> = {
+  Low: "bg-success/15 text-success border-success/30",
+  Medium: "bg-warning/15 text-warning border-warning/30",
+  High: "bg-destructive/15 text-destructive border-destructive/30",
+};
 
 const Dashboard = () => {
   const [fixed, setFixed] = useState(false);
